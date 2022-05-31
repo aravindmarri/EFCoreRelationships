@@ -19,7 +19,11 @@ namespace EFCoreRelationships.Controllers
         [HttpGet]
         public async Task<ActionResult<List<Character>>> Get(int userId)
         {
-            var characters = await _context.Character.Where(c => c.UserId == userId).Include(c => c.Weapon).ToListAsync();
+            var characters = await _context.Character
+                .Where(c => c.UserId == userId)
+                .Include(c => c.Weapon)
+                .Include(c => c.Skills)
+                .ToListAsync();
 
             return characters;
         }
@@ -39,6 +43,45 @@ namespace EFCoreRelationships.Controllers
             _context.Character.Add(newCharacter);
             await _context.SaveChangesAsync();
             return await Get(newCharacter.UserId);
+        }
+
+        [HttpPost("weapon")]
+        public async Task<ActionResult<Character>> AddWeapon(AddWeaponDto request)
+        {
+            var character = await _context.Character.FindAsync(request.CharacterId);
+            if (character == null)
+                return NotFound();
+            var newWeapon = new Weapon
+            {
+                Name = request.Name,
+                Damage = request.Damage,
+                Character = character
+            };
+            _context.Weapons.Add(newWeapon);
+            await _context.SaveChangesAsync();
+
+            return character;
+        }
+
+        [HttpPost("skill")]
+        public async Task<ActionResult<Character>> AddCharacterSkill(AddCharacterSkillDto request)
+        {
+            var character = await _context.Character
+                .Where(c => c.Id == request.CharacterId)
+                .Include(c => c.Skills)
+                .FirstOrDefaultAsync();
+            if (character == null)
+                return NotFound();
+
+            var skill = await _context.Skills.FindAsync(request.SkillId);
+            if (skill == null)
+                return NotFound();
+            character.Skills.Add(skill);
+
+            _context.Skills.Add(skill);
+            await _context.SaveChangesAsync();
+
+            return character;
         }
     }
 }
